@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: lottery-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: lottery_analysis
+      MYSQL_USER: lottery_user
+      MYSQL_PASSWORD: lottery_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - lottery-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Python爬虫服务
+  python-crawler:
+    build:
+      context: ./python-crawler
+      dockerfile: Dockerfile
+    container_name: lottery-python-crawler
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=lottery_user
+      - DB_PASSWORD=lottery_pass
+      - DB_NAME=lottery_analysis
+    depends_on:
+      - mysql
+    networks:
+      - lottery-network
+    volumes:
+      - ./python-crawler/logs:/app/logs
+      - ./python-crawler/charts:/app/charts
+
+  # Java后端服务
+  java-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lottery-java-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/lottery_analysis?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=lottery_user
+      - SPRING_DATASOURCE_PASSWORD=lottery_pass
+      - PYTHON_CRAWLER_BASE_URL=http://python-crawler:8000
+    depends_on:
+      - mysql
+      - python-crawler
+    networks:
+      - lottery-network
+
+  # React前端服务
+  react-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lottery-react-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080/api
+    depends_on:
+      - java-backend
+    networks:
+      - lottery-network
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: lottery-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - java-backend
+      - react-frontend
+    networks:
+      - lottery-network
+
+volumes:
+  mysql_data:
+
+networks:
+  lottery-network:
+    driver: bridge 

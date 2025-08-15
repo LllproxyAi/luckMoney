@@ -1,0 +1,56 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: lottery-analysis-backend
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/lottery_analysis?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        
+  security:
+    user:
+      name: admin
+      password: admin123
+      
+# 日志配置
+logging:
+  level:
+    com.moneyluck: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    
+# JWT配置
+jwt:
+  secret: moneyluck-lottery-analysis-secret-key-2024
+  expiration: 86400000  # 24小时
+  
+# Python爬虫服务配置
+python-crawler:
+  base-url: http://localhost:8000
+  timeout: 30000
+  
+# 跨域配置
+cors:
+  allowed-origins: http://localhost:3000
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true 
